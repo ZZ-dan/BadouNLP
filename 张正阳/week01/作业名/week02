@@ -1,0 +1,82 @@
+import torch
+import torch.nn as nn
+import numpy as np
+import random
+import json
+import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader, TensorDataset
+import torch.optim as optim
+
+"""
+
+基于pytorch框架编写模型训练
+实现一个自行构造的找规律(机器学习)任务
+规律：x是一个5维向量，如果第1个数>第5个数，则为正样本，反之为负样本
+
+"""
+
+# 创建示例数据
+num_samples = 1000
+input_dim = 10
+num_classes = 5
+
+# 随机生成特征和标签
+X = torch.rand(num_samples, input_dim)  # 特征
+y = torch.randint(0, num_classes, (num_samples,))  # 标签
+
+# 创建数据加载器
+dataset = TensorDataset(X, y) # type: ignore
+dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+
+
+# 定义一个简单的模型
+class SimpleNet(nn.Module):
+    def __init__(self, input_dim, num_classes):
+        super(SimpleNet, self).__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(input_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_classes)
+        )
+    
+    def forward(self, x):
+        return self.fc(x)
+
+# 实例化模型
+model = SimpleNet(input_dim=input_dim, num_classes=num_classes)
+
+
+# 定义交叉熵损失函数和优化器
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.01)
+
+
+# 训练模型
+num_epochs = 999
+
+for epoch in range(num_epochs):
+    model.train()
+    running_loss = 0.0
+
+    for batch_X, batch_y in dataloader:
+        # 前向传播
+        outputs = model(batch_X)
+        # 计算损失
+        loss = criterion(outputs, batch_y)
+        # 反向传播和优化
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+
+    avg_loss = running_loss / len(dataloader)
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}")
+
+# 测试模型
+model.eval()
+with torch.no_grad():
+    sample_input = torch.rand(1, input_dim)
+    sample_output = model(sample_input)
+    predicted_class = torch.argmax(sample_output, dim=1).item()
+    print(f"Predicted class: {predicted_class}")
